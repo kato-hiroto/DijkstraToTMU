@@ -3,7 +3,7 @@ from gevent import pywsgi
 from geventwebsocket.handler import WebSocketHandler
 
 PORT = 8080
-app = Flask(__name__)
+app = Flask(__name__, template_folder="./")
 
 @app.route("/")
 def index():
@@ -14,11 +14,12 @@ def pipe():
     if request.environ.get("wsgi.websocket"):
         ws = request.environ["wsgi.websocket"]
         while True:
-            msg = ws.receive()
+            msg = ws.receive()  # 受信
             if msg is None:
-                break       # 受信情報がNoneなら接続終了
+                break
             else:
-                agent.receive(msg)
+                ws.send(msg)    # 送信
+                pass
 
 def serve_run():
     print(f"http://localhost:{PORT}")
@@ -28,3 +29,4 @@ def serve_run():
 
 if __name__ == "__main__":
     serve_run()
+    # python serve.py で起動，http://localhost:{PORT} に接続可能
