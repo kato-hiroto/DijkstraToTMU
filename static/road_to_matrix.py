@@ -23,6 +23,7 @@ def save_pickle(obj, path):
 def road_to_matrix(path):
     # 保存領域
     uid_table = {}
+    point_table = {}
     adj_matrix = []
 
     obj = json.loads(read_text(path))
@@ -52,6 +53,7 @@ def road_to_matrix(path):
                 # 新しく発見した点なら行を増やす
                 uid = uid_max
                 uid_table[node] = uid_max
+                point_table[uid] = p
                 adj_matrix.append([math.inf] * (prev_uid + 1))
                 if prev_uid >= 0:
                     adj_matrix[uid][prev_uid] = cost
@@ -75,11 +77,18 @@ def road_to_matrix(path):
             if c < math.inf:
                 np_matrix[i, j] = c
                 np_matrix[j, i] = c
-    return np_matrix
+    return point_table, np_matrix
+
+
+class RoadMatrix:
+    def __init__(self, tab, mat):
+        self.table = tab
+        self.matrix = mat
 
 
 if __name__ == "__main__":
-    mat = road_to_matrix(PATH)
-    print(mat)
-    save_pickle(mat, "road_matrix.dump")
+    tab, mat = road_to_matrix(PATH)
+    print("table :", tab)
+    print("matrix :", mat)
+    save_pickle(RoadMatrix(tab, mat), "road_matrix.dump")
 
