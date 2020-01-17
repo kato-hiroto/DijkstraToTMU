@@ -1,0 +1,79 @@
+<html>
+
+<head>
+    <title>leaflet_test</title>
+    <link rel="stylesheet" href="https://unpkg.com/leaflet@1.5.1/dist/leaflet.css"
+        integrity="sha512-xwE/Az9zrjBIphAcBb3F6JVqxf46+CDLwfLMHloNu6KEQCAWi6HcDUbeOfBIptF7tcCzusKFjFw2yuvEpDL9wQ=="
+        crossorigin="" />
+    <script src="https://unpkg.com/leaflet@1.5.1/dist/leaflet.js"
+        integrity="sha512-GffPMF3RvMeYyc1LWMHtK8EbPv0iNZ8/oTtHPx9/cc2ILxQ+u905qIwdpULaqDkyBKgOaB57QTMg7ztg8Jm2Og=="
+        crossorigin=""></script>
+    <link rel="stylesheet" href="map.css">
+    <script src="jQuery.js"></script>
+</head>
+
+<body>
+    <div id="mapid"></div>
+    
+    <script>
+        const socket = new WebSocket("ws://localhost:8080/pipe");   // ソケットの作成
+        socket.onmessage = (ev) => {    // 受信
+            drawPolylineFunction(ev.data)   // ev.dataに文字列が入っている
+        };
+    </script>
+
+    <script>
+        var mymap = L.map('mapid').setView([35.660631, 139.3666648], 15);
+        L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png?{foo}',
+            { foo: 'bar', attribution: 'Map data &copy; <a href="https://www.openstreetmap.org/">OpenStreetMap</a> contributors, <a href="https://creativecommons.org/licenses/by-sa/2.0/">CC-BY-SA</a>' }
+        ).addTo(mymap);
+
+        var popup = L.popup();
+
+        function gotoTMU(e) {
+            //首都大までの最短経路を表示するコード
+
+
+            //get osm json data
+            $.ajax({
+                url: "osm.json",
+                type: "GET",
+                dataType: "json",
+                success: function (data) {
+                    $.each(data.elements, function (i, item) {
+                        if(item.lat>35.660431 && item.lat<35.660831){
+                            if(item.lon>139.3664648 && item.lon<139.3668648){
+                                var marker = L.marker([item.lat, item.lon]).addTo(mymap);
+                            }
+                        }
+                        
+                    })
+                    console.log("success")
+
+                },
+                error: function (data) {
+                    console.log("fail");
+                }
+            });
+        }
+        function onMapClick(e) {
+
+            socket.send(e.latlng.toString());  // 送信
+            
+            popup
+                .setLatLng(e.latlng)
+                .setContent("Now you're in " + e.latlng.toString() +
+                    '</br><button onclick="gotoTMU()">go to TMU</button>')
+                .openOn(mymap);
+        }
+
+        mymap.on('click', onMapClick);
+
+
+
+
+
+    </script>
+</body>
+
+</html>
