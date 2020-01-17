@@ -19,13 +19,6 @@ def read_text(path):
 def save_pickle(obj, path):
     with open(path, "wb") as f:
         pickle.dump(obj, f)
-        
-
-def read_pickle(path):
-    dump = None
-    with open(path, "rb") as f:
-        dump = pickle.load(f)
-    return dump
 
 
 def road_to_matrix(path):
