@@ -5,6 +5,7 @@ import pickle
 
 
 PATH = "./leaflet/hino_road.json"
+DUMP_NAME = "road_matrix.dump"
 UID_START = 0
 
 
@@ -18,6 +19,13 @@ def read_text(path):
 def save_pickle(obj, path):
     with open(path, "wb") as f:
         pickle.dump(obj, f)
+        
+
+def read_pickle(path):
+    dump = None
+    with open(path, "rb") as f:
+        dump = pickle.load(f)
+    return dump
 
 
 def road_to_matrix(path):
@@ -90,5 +98,5 @@ if __name__ == "__main__":
     tab, mat = road_to_matrix(PATH)
     print("table :", tab)
     print("matrix :", mat)
-    save_pickle(RoadMatrix(tab, mat), "road_matrix.dump")
+    save_pickle(RoadMatrix(tab, mat), DUMP_NAME)
 
