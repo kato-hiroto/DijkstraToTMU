@@ -31,25 +31,29 @@ def reqs_distance(req1, req2):
 
 
 # 最小のペアを求める
-def min_pair(enumdata, keyfunc, count):
+def min_pair(enumdata):
     comb = list(itertools.combinations(enumdata, 2))
-    return min(comb, key=lambda x: keyfunc(x[0][1], x[1][1]))
+    return min(comb, key=lambda x: reqs_distance(x[0][1], x[1][1]))
 
 
 def min_pair_first(enumdata, table, matrix):
     i = enumdata[0][0]
-    indices = [(j, matrix[i, j[0]] for j in enumdata if matrix[i, j[0]] < np.inf]
-    index = min(indices, key=lambda x:x[1])[0]
-    return ((i, table[i]), (j, table[j]))
+    indices = [(j[0], matrix[i, j[0]]) for j in enumdata if matrix[i, j[0]] < np.inf]
+    # print(indices)
+    if len(indices) < 1:
+        return None
+    else:
+        index = min(indices, key=lambda x:x[1])[0]
+        return ((i, table[i]), (index, table[index]))
 
 
 # aのリストからbに含まれるインデックスを除外
-def list_sub(list_a, index_b, count):
+def list_sub(list_a, index_b):
     return [(i, a) for i, a in enumerate(list_a) if i not in index_b]
 
 
 # 座標が入ったリストから最小のペアを選択しつづけ新たなリストを作成
-def min_matching(positions, sizefunc, margefunc):
+def min_matching(positions, first_flag, table=None, matrix=None):
     used = []
     new_list = []
     new_list_target = []
@@ -57,18 +61,28 @@ def min_matching(positions, sizefunc, margefunc):
     count = 0
     while len(positions) - len(used) > 1:
         sub = list_sub(positions, used)
-        item = min_pair(sub, sizefunc)
+        item = None
+        if first_flag:
+            item = min_pair_first(sub, table, matrix)
+            if item is None:
+                tmp = new_list[-1]
+                used.append(sub[0][0])
+                new_list[-1] = joint_mbr(*tmp, table[sub[0][1]])
+                new_list_target[-1].append(sub[0][0])
+                continue
+        else:
+            item = min_pair(sub)
         used.extend([item[0][0], item[1][0]])
         new_list.append((item[0][1], item[1][1]))
-        new_list_target.append((item[0][0], item[1][0]))
+        new_list_target.append([item[0][0], item[1][0]])
         count += 1
         if count % 100 == 0:
             print(used)
 
     if len(positions) - len(used) == 1:
-        sub = list_sub(positions, used, 0)
+        sub = list_sub(positions, used)
         tmp = new_list[-1]
-        new_list[-1] = margefunc(*tmp, sub[0][1])
+        new_list[-1] = joint_mbr(*tmp, sub[0][1])
         new_list_target[-1].append(sub[0][0])
     return new_list, new_list_target
 
@@ -88,14 +102,14 @@ class RTree:
         # 葉ノードを結合する
         # level[ノードインデックス][矩形=0,指し先=1]
         leaves = [i for i in range(len(self.matrix))]
-        l, l_target = min_matching(leaves, sizefunc=lambda x, y: self.matrix[x, y], margefunc=lambda *x: x)
+        l, l_target = min_matching(leaves, True, self.table, self.matrix)
         level = [(joint_mbr(self.table[j] for j in l[i]), l_target[i]) for i in range(len(l))]
         tree.append(level)
 
         # 枝を順に結合する
         while len(tree[-1]) > 1:
             leaves = [leaf[0] for leaf in tree[-1]]
-            l, l_target = min_matching(leaves, sizefunc=lambda x, y: reqs_distance(x, y), margefunc=joint_mbr)
+            l, l_target = min_matching(leaves, False)
             level = [(l[i], l_target[i]) for i in range(len(l))]
             tree.append(level)
 
