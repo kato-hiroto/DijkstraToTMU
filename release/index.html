@@ -19,6 +19,7 @@
         // ソケットの宣言
         const socket = new WebSocket("ws://localhost:8080/pipe");
         socket.onmessage = (ev) => {        // 受信
+            console.log(ev.data)
             drawPolylineFunction(ev.data)   // ev.dataに文字列が入っている
         };
     </script>
@@ -38,9 +39,7 @@
             bubblingMouseEvents: false
         }).addTo(mymap);
         let start_position = L.marker([0,0]).addTo(mymap);
-
-        // クリック位置
-        // let global_e;
+        let gloabl_e;
 
         //首都大の位置のポップアップ
         const marker = L.marker([35.66123, 139.366851]).addTo(mymap);
@@ -67,18 +66,22 @@
 
         function drawPolylineFunction(ev_data) {
             //もろもろを表示する
-            // start_position.remove();
-            // start_position = L.marker(gloabl_e.latlng).addTo(mymap);
-            // start_position.bindPopup("現在地<br>" + gloabl_e.latlng.toString()).openPopup();
+            start_position.remove();
+            start_position = L.marker(gloabl_e.latlng).addTo(mymap);
+            start_position
+                .bindPopup("現在地<br>" + gloabl_e.latlng.toString())
+                .openPopup();
             
             //stringをJsonに書き換える
             let json_list = JSON.parse(ev_data);
 
             //Jsonをリストに書き換える
             let route = [];
-            for(let i in json_list){
-                route.push(json_list[i]);
+            for(let latlng of json_list["elements"]){
+                route.push(latlng);
             }
+
+            console.log(route.toString())
 
             //一番後ろに首都大の緯度経度を追加
             route.push([35.66123, 139.366851]);
@@ -92,32 +95,25 @@
                 "weight": 3,
                 "opacity": 0.6
             }).addTo(mymap);
-
-            //もろもろを表示する
-            // start_position.remove();
-            // start_position = L.marker(gloabl_e.latlng).addTo(mymap);
-            // start_position.bindPopup("現在地<br>" + gloabl_e.latlng.toString()).openPopup();
         }
 
     </script>
 
     <script>
-        // var mymap = L.map('mapid').setView([35.660631, 139.3666648], 15);
-        // L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png?{foo}',
-        //     { foo: 'bar', attribution: 'Map data &copy; <a href="https://www.openstreetmap.org/">OpenStreetMap</a> contributors, <a href="https://creativecommons.org/licenses/by-sa/2.0/">CC-BY-SA</a>' }
-        // ).addTo(mymap);
-        const popup = L.popup();
-
-        function gotoTMU(mes) {
-            socket.send(mes);  // 送信
+        function gotoTMU() {
+            console.log("send")
+            const lat = gloabl_e.latlng.lat.toString()
+            const lng = gloabl_e.latlng.lng.toString()
+            socket.send(lat + "," + lng);    // 送信
         }
 
         function onMapClick(e) {
-            // gloabl_e = e;
-            popup
+            gloabl_e = e;
+            start_position.remove();
+            start_position = L.popup();
+            start_position
                 .setLatLng(e.latlng)
-                .setContent("Now you're in " + e.latlng.toString() +
-                    '</br><button onclick="gotoTMU(e.latlng.toString())">go to TMU</button>')
+                .setContent("Now you're in " + e.latlng.toString() + '</br><button onclick="gotoTMU()">go to TMU</button>')
                 .openOn(mymap);
         }
         mymap.on('click', onMapClick);
