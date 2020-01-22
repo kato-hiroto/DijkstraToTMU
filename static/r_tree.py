@@ -3,10 +3,16 @@ import math
 import numpy as np
 import pickle
 
-from .road_to_matrix import RoadMatrix
+from road_to_matrix import RoadMatrix
 
 
-DUMP_NAME = "./static/road_matrix.dump"
+MATRIX_NAME = "./road_matrix.dump"
+RTREE_NAME = "./rtree.dump"
+
+
+def save_pickle(obj, path):
+    with open(path, "wb") as f:
+        pickle.dump(obj, f)
 
 
 def read_pickle(path):
@@ -16,169 +22,192 @@ def read_pickle(path):
     return dump
 
 
-# 最小外接矩形を求める
-def joint_mbr(*points):
-    x = [p[0] for p in points]
-    y = [p[1] for p in points]
-    return np.array([[min(x), min(y)], [max(x), max(y)]])
+# リストについて
+# 空リスト [] == False
 
 
-# 矩形間の距離を求める
-def reqs_distance(req1, req2):
-    c1 = (req1[0] - req1[1]) / 2
-    c2 = (req2[0] - req2[1]) / 2
-    return np.linalg.norm(c1 - c2, ord=2)
+# 各ノードに保存されている情報
+class NodeInformation:
 
+    def __init__(self, *, index, lat=None, lon=None, node_a=None, node_b=None, children_a=None):
 
-# 最小のペアを求める
-def min_pair(enumdata):
-    comb = list(itertools.combinations(enumdata, 2))
-    return min(comb, key=lambda x: reqs_distance(x[0][1], x[1][1]))
+        # 一時変数定義
+        min_lat = None
+        min_lon = None
+        max_lat = None
+        max_lon = None
+        c = []
 
-
-def min_pair_first(enumdata, table, matrix):
-    i = enumdata[0][0]
-    indices = [(j[0], matrix[i, j[0]]) for j in enumdata if matrix[i, j[0]] < np.inf]
-    # print(indices)
-    if len(indices) < 1:
-        return None
-    else:
-        index = min(indices, key=lambda x:x[1])[0]
-        return ((i, table[i]), (index, table[index]))
-
-
-# aのリストからbに含まれるインデックスを除外
-def list_sub(list_a, index_b):
-    return [(i, a) for i, a in enumerate(list_a) if i not in index_b]
-
-
-# 座標が入ったリストから最小のペアを選択しつづけ新たなリストを作成
-def min_matching(positions, first_flag, table=None, matrix=None):
-    used = []
-    new_list = []
-    new_list_target = []
-
-    count = 0
-    while len(positions) - len(used) > 1:
-        sub = list_sub(positions, used)
-        item = None
-        if first_flag:
-            item = min_pair_first(sub, table, matrix)
-            if item is None:
-                tmp = new_list[-1]
-                used.append(sub[0][0])
-                new_list[-1] = joint_mbr(*tmp, table[sub[0][1]])
-                new_list_target[-1].append(sub[0][0])
-                continue
+        # 引数の条件分岐
+        if None in [node_a, node_b]:
+            min_lat = lat - 0.0004
+            min_lon = lon - 0.0004
+            max_lat = lat + 0.0004
+            max_lon = lon + 0.0004
         else:
-            item = min_pair(sub)
-        used.extend([item[0][0], item[1][0]])
-        new_list.append((item[0][1], item[1][1]))
-        new_list_target.append([item[0][0], item[1][0]])
-        count += 1
-        if count % 100 == 0:
-            print(used)
+            if lat is None:
+                lat = (node_a.min_latlon[0] + node_b.min_latlon[0]) / 2
+            if lon is None:
+                lon = (node_a.min_latlon[1] + node_b.min_latlon[1]) / 2
+            min_lat = min(node_a.min_latlon[0], node_b.min_latlon[0])
+            min_lon = min(node_a.min_latlon[1], node_b.min_latlon[1])
+            max_lat = max(node_a.max_latlon[0], node_b.max_latlon[0])
+            max_lon = max(node_a.max_latlon[1], node_b.max_latlon[1])
+            if children_a is None:
+                c = [node_a.index, node_b.index]
+            else:
+                c.extend(children_a)
+                c.append(node_b.index)
+        
+        # メンバ定義
+        self.index = index
+        self.children = c
+        self.link_to = []
+        self.point = np.array([lat, lon])
+        self.min_latlon = np.array([min_lat, min_lon])
+        self.max_latlon = np.array([max_lat, max_lon])
 
-    if len(positions) - len(used) == 1:
-        sub = list_sub(positions, used)
-        tmp = new_list[-1]
-        new_list[-1] = joint_mbr(*tmp, sub[0][1])
-        new_list_target[-1].append(sub[0][0])
-    return new_list, new_list_target
+        
+    # 隣接行列を見てリンクを持つ他ノードのインデックスを挿入
+    def add_link(self, matrix):
+        self.link_to = [(i, dist) for i, dist in enumerate(matrix[self.index]) if dist < np.inf]
 
 
+    # 候補から最短のノードを求める
+    def find_nearest(self, node_list, inventory):
+        # 候補がなかった場合の値
+        min_index = -1
+        min_val = np.inf
+        if self.link_to:
+            # リンクがある場合
+            cand = [(i, dist) for i, dist in self.link_to if i in inventory]
+            if cand:
+                return min(cand, key=lambda x:x[1])[0]
+        else:
+            # リンクがない場合
+            for i, node_b in enumerate(node_list):
+                if i not in inventory:
+                    continue
+                val = sum((self.point - node_b.point) ** 2)
+                if val < min_val:
+                    min_index = i
+                    min_val = val
+        return min_index
+
+
+    # 指定された点を含むか
+    def find(self, lat, lon):
+        # flag = self.min_latlon[0] < lat and lat < self.max_latlon[0] and self.min_latlon[1] < lon and lon < self.max_latlon[1]
+        # if flag:
+        #     print(self.min_latlon, self.max_latlon, self.children)
+        return self.min_latlon[0] < lat and lat < self.max_latlon[0] and self.min_latlon[1] < lon and lon < self.max_latlon[1]
+
+
+# RTreeを内包するクラス
 class RTree:
 
     def __init__(self, table, matrix):
         super().__init__()
         self.table = table      # インデックスと緯度経度
         self.matrix = matrix    # 隣接行列
+        self.tree = []          # ここにツリー構造が入る
+        self.leaves = []
+        self.create_leaves()
         self.create_r_tree()
 
 
+    # 葉を構成する
+    def create_leaves(self):
+        leaves = [NodeInformation(index=i, lat=t[0], lon=t[1]) for i, t in self.table.items()]
+        for node in leaves:
+            node.add_link(self.matrix)
+        self.leaves = leaves
+
+
+    # 木を構成する
     def create_r_tree(self):
-        tree = []       # tree[深さ(0が最深)][ノードインデックス][指し先=0,矩形=1]
+        tree = [self.leaves]       # tree[深さ(0が最深)][ノードインデックス]
 
-        # 葉ノードを結合する
-        # level[ノードインデックス][矩形=0,指し先=1]
-        leaves = [i for i in range(len(self.matrix))]
-        l, l_target = min_matching(leaves, True, self.table, self.matrix)
-        level = [(joint_mbr(self.table[j] for j in l[i]), l_target[i]) for i in range(len(l))]
-        tree.append(level)
-
-        # 枝を順に結合する
-        while len(tree[-1]) > 1:
-            leaves = [leaf[0] for leaf in tree[-1]]
-            l, l_target = min_matching(leaves, False)
-            level = [(l[i], l_target[i]) for i in range(len(l))]
+        # ノードを結合
+        height = 0
+        width = len(tree[height])
+        while width > 1:
+            level = []  # ここに結合したノードを格納
+            inventory = list(range(width))
+            for i, node in enumerate(tree[height]):
+                if i not in inventory:
+                    continue
+                inventory.remove(i)
+                hit = node.find_nearest(tree[height], inventory)
+                if hit < 0:
+                    # 該当なしなら直前に生成したノードへ結合
+                    index = len(level) - 1
+                    new_node = NodeInformation(index=index, node_a=level[-1], node_b=node, children_a=level[-1].children)
+                    level[-1] = new_node
+                else:
+                    # 該当したなら見つけたノードと結合
+                    index = len(level)
+                    new_node = NodeInformation(index=index, node_a=node, node_b=tree[height][hit])
+                    level.append(new_node)
+                    inventory.remove(hit)
             tree.append(level)
+            height += 1
+            width = len(tree[height])
 
+        # 木を定義
         self.tree = tree
-        print(tree)
+
+
+    # 指定したノード内にある葉ノードを再帰的にすべて探索する
+    def get_contain_leaves(self, lat, lon, height, index):
+        node = self.tree[height][index]
+        if height <= 0:
+            # 葉ノードが指定されたらそのまま返す
+            return [node]
+        else:
+            # 子ノードがあるなら探索
+            in_ans = []
+            out_ans = []
+            in_flag = False
+            for c in node.children:
+                # 子ノードの内部に含まれるか
+                if self.tree[height - 1][c].find(lat, lon):
+                    in_ans.extend(self.get_contain_leaves(lat, lon, height - 1, c))
+                    in_flag = True
+                else:
+                    out_ans.extend(self.get_contain_leaves(lat, lon, height - 1, c))
+            if in_flag:
+                # 含んでいる子ノードがあるならそれらの答えを返す
+                return in_ans
+            else:
+                return out_ans
+
+
+    # 最も近い葉ノードを探す
+    def search(self, lat, lon):
+        latlon = np.array([lat, lon])
+        cand = self.get_contain_leaves(lat, lon, len(self.tree) - 1, 0)
+        print("探索数 :", len(cand))
+        cand_dists = [(c, sum((c.point - latlon) ** 2)) for c in cand]
+        return min(cand_dists, key=lambda x: x[1])[0]
+
+
+    # テスト用 全探索解
+    def test_search(self, lat, lon):
+        latlon = np.array([lat, lon])
+        cand_dists = [(c, sum((c.point - latlon) ** 2)) for c in self.leaves]
+        return min(cand_dists, key=lambda x: x[1])[0]
 
 
 if __name__ == "__main__":
-    dump = read_pickle(DUMP_NAME)
-    rtree = RTree(dump.table, dump.matrix)
-
-
-
-
-        
-        # for i, i_dists in enumerate(self.matrix):
-
-        #     if i in tree_level:
-        #         # 利用済みの葉ノードは除外
-        #         continue
-        #     indices = [(j, dist) for j, dist in list_sub(i_dists, use_leaves) if dist < np.inf]
-
-        #     if len(indices) < 1:
-        #         # もし結合すべき葉ノードが見つからなかったら直前のものと結合
-        #         leaves = (*tree_level[-1][0], i)
-        #         r = joint_mbr(*[self.table[leaf] for leaf in leaves])
-        #         tree_level[-1] = (leaves, r)
-        #         use_leaves.extend([i])
-        #     else:
-        #         # 結合先があれば結合
-        #         index = min(indices, key=lambda x:x[1])[0]
-        #         leaves = (i, index)
-        #         r = joint_mbr(*[self.table[leaf] for leaf in leaves])
-        #         tree_level.append((leaves, r))
-        #         use_leaves.extend([i, j])
-        # tree.append(tree_level)
-
-        # # 枝ノード
-        # while len(tree[-1]) <= 1:
-        #     last_tl = tree[-1]
-        #     tree_level = []
-        #     for i in range(0, len(last_tl), 2):
-        #         if i - 1 == len(last_tl):
-        #             # もし結合すべきノードが見つからなかったら直前のものと結合
-        #             leaves = (*tree_level[-1][0], i)
-        #             r = joint_mbr(*tree_level[-1][1], *last_tl[i][1])
-        #             tree_level[-1] = (leaves, r)
-        #         else:
-        #             # 結合先があれば結合
-        #             leaves = (i, i+1)
-        #             r = joint_mbr(*[self.table[leaf] for leaf in leaves])
-        #             tree_level.append((leaves, r))
-        #             use_leaves.extend([i, j])
-        #         p1 = last_tl[i][1]
-        #         p2 = last_tl[i+1][1]
-        #         r = joint_mbr(p1, p2)
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
+    # dump = read_pickle(MATRIX_NAME)
+    # rtree = RTree(dump.table, dump.matrix)
+    # save_pickle(rtree, RTREE_NAME)
+    rtree = read_pickle(RTREE_NAME)
+    x = float(input("lat:"))
+    y = float(input("lon:"))
+    node = rtree.search(x, y)
+    print("latitude:", node.point[0], "longitude:", node.point[1], "distance:", np.linalg.norm(node.point - np.array([x, y]), 2))
+    # print("test...")
+    # node2 = rtree.test_search(x, y)
+    # print("latitude:", node2.point[0], "longitude:", node2.point[1], "distance:", np.linalg.norm(node2.point - np.array([x, y]), 2))
