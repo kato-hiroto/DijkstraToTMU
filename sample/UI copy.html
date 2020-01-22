@@ -20,6 +20,73 @@
         socket.onmessage = (ev) => {    // 受信
             drawPolylineFunction(ev.data)   // ev.dataに文字列が入っている
         };
+
+        //初期の地図を宣言
+        var mymap = L.map('mapid').setView([35.66123, 139.366851], 16);
+        var line =  L.polyline([], { color: 'blue', weight: 5, bubblingMouseEvents: false }).addTo(mymap);
+        var start_position = L.marker([0,0]).addTo(mymap);
+        var global_e;
+
+        L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png?{foo}',
+        { foo: 'bar', attribution: 'Map data &copy; <a href="https://www.openstreetmap.org/">OpenStreetMap</a> contributors, <a href="https://creativecommons.org/licenses/by-sa/2.0/">CC-BY-SA</a>' }
+        ).addTo(mymap);
+
+        //首都大の位置のポップアップ
+        var marker = L.marker([35.66123, 139.366851]).addTo(mymap);
+
+        //首都大を青枠で表示
+        var polygon = L.polygon([
+            //右上
+            [35.663084, 139.367854],
+            //右ちょい上
+            [35.661729, 139.368122],
+            //右ちょい下
+            [35.660853, 139.368149],
+            //右下
+            [35.660081, 139.368101],
+            //左下
+            [35.660251, 139.365719],
+            //左上
+            [35.661629, 139.364807]
+            ]).addTo(mymap);
+
+        //首都大のポップアップを設定
+        marker.bindPopup("<b>首都大学東京</b><br>日野キャンパス").openPopup();
+        polygon.bindPopup("〒191-0065<br>東京都日野市旭が丘６丁目６");
+
+        function drawPolylineFunction(ev_data) {
+            start_position.remove();
+            start_position = L.marker(gloabl_e.latlng).addTo(mymap);
+            start_position.bindPopup("現在地<br>" + gloabl_e.latlng.toString()).openPopup();
+            
+            //stringをJsonに書き換える
+            var json_list = JSON.parse(ev_data);
+
+            //Jsonをリストに書き換える
+            var route = [];
+            for( var i in json_list){
+                route.push(json_list[i]);
+            }
+            //一番後ろに首都大の緯度経度を追加
+            route.push([35.66123, 139.366851]);
+
+            //赤いラインの初期化
+            line.setLatLngs([]);
+
+            //ルートを赤線で表示する
+            line = L.polyline(route,
+            {
+            "color": "#FF0000",
+            "weight": 3,
+            "opacity": 0.6
+            }).addTo(mymap);
+
+            //もろもろを表示する
+            start_position.remove();
+            start_position = L.marker(gloabl_e.latlng).addTo(mymap);
+            start_position.bindPopup("現在地<br>" + gloabl_e.latlng.toString()).openPopup();
+        }
+
     </script>
 
     <script>
@@ -57,6 +124,7 @@
             });
         }
         function onMapClick(e) {
+            gloabl_e = e;
 
             socket.send(e.latlng.toString());  // 送信
             
