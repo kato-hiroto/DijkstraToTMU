@@ -3,11 +3,14 @@ import math
 import numpy as np
 import pickle
 
-from .road_to_matrix import RoadMatrix
+if __name__ == "__main__":
+    from road_to_matrix import RoadMatrix
+else:
+    from .road_to_matrix import RoadMatrix
 
 
 MATRIX_NAME = "./road_matrix.dump"
-RTREE_NAME = "./rtree.dump"
+RTREE_NAME = "./r_tree.dump"
 POINT_RANGE = 0.0005
 
 
@@ -81,13 +84,13 @@ class NodeInformation:
         min_val = np.inf
         if self.link_to:
             # リンクがある場合
-            cand = [(i, dist) for i, dist in self.link_to if i in inventory]
+            cand = [(i, dist) for i, dist in self.link_to if inventory[i]]
             if cand:
                 return min(cand, key=lambda x:x[1])[0]
         else:
             # リンクがない場合
             for i, node_b in enumerate(node_list):
-                if i not in inventory:
+                if not inventory[i]:
                     continue
                 val = sum((self.point - node_b.point) ** 2)
                 if val < min_val:
@@ -134,11 +137,13 @@ class RTree:
         width = len(tree[height])
         while width > 1:
             level = []  # ここに結合したノードを格納
-            inventory = list(range(width))
+            inventory = {i: True for i in range(width)}
             for i, node in enumerate(tree[height]):
-                if i not in inventory:
+                if i % 30 == 0:
+                    print("height :" , height, "(" + str(i) + "/" + str(width) + ")")
+                if not inventory[i]:
                     continue
-                inventory.remove(i)
+                inventory[i] = False
                 hit = node.find_nearest(tree[height], inventory)
                 if hit < 0:
                     # 該当なしなら直前に生成したノードへ結合
@@ -150,7 +155,7 @@ class RTree:
                     index = len(level)
                     new_node = NodeInformation(index=index, node_a=node, node_b=tree[height][hit])
                     level.append(new_node)
-                    inventory.remove(hit)
+                    inventory[hit] = False
             tree.append(level)
             height += 1
             width = len(tree[height])
@@ -206,14 +211,10 @@ class RTree:
 
 
 if __name__ == "__main__":
-    # dump = read_pickle(MATRIX_NAME)
-    # rtree = RTree(dump.table, dump.matrix)
-    # save_pickle(rtree, RTREE_NAME)
-    rtree = read_pickle(RTREE_NAME)
+    dump = read_pickle(MATRIX_NAME)
+    rtree = RTree(dump.table, dump.matrix)
+    # save_pickle(rtree, RTREE_NAME)    # 保存があまりに重すぎる
     x = float(input("lat:"))
     y = float(input("lon:"))
     node = rtree.search(x, y)
     print("latitude:", node.point[0], "longitude:", node.point[1], "distance:", np.linalg.norm(node.point - np.array([x, y]), 2))
-    # print("test...")
-    # node2 = rtree.test_search(x, y)
-    # print("latitude:", node2.point[0], "longitude:", node2.point[1], "distance:", np.linalg.norm(node2.point - np.array([x, y]), 2))

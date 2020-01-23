@@ -4,7 +4,7 @@ from flask import Flask, render_template, request
 from gevent import pywsgi
 from geventwebsocket.handler import WebSocketHandler
 
-from backend import dijkstra
+from backend.road_to_matrix import RoadMatrix
 from backend.r_tree import NodeInformation, RTree
 
 
@@ -17,7 +17,10 @@ def read_pickle(path):
 
 PORT = 8080
 app = Flask(__name__, template_folder="./")
-rtree = read_pickle("./backend/rtree.dump")
+road_matrix = read_pickle("./backend/road_matrix.dump")
+# rtree = read_pickle("./backend/r_tree.dump")
+rtree = RTree(road_matrix.table, road_matrix.matrix)
+position_path_dict = read_pickle('./backend/position_path_dict.dump')
 
 
 @app.route("/")
@@ -36,9 +39,7 @@ def pipe():
                 lat, lng = map(float, msg.split(','))
                 print("receive lat:", lat, "lng:", lng)
                 start_id = rtree.return_id(lat, lng)
-                
-                # ここに処理を書く
-                result = dijkstra.way_to_tmu(start_id)
+                result = position_path_dict[start_id]
                 result_json = json_dumps(result)
                 print(result_json)
                 ws.send(result_json)    # 送信

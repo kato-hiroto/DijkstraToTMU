@@ -4,7 +4,7 @@ import numpy as np
 import pickle
 
 
-PATH = "./hino_road.json"
+PATH = "osm.json"
 DUMP_NAME = "road_matrix.dump"
 UID_START = 0
 
@@ -19,6 +19,63 @@ def read_text(path):
 def save_pickle(obj, path):
     with open(path, "wb") as f:
         pickle.dump(obj, f)
+
+
+def osm_to_matrix(path):
+    # 保存領域
+    node_to_index = {}
+    index_to_position = {}
+    adj_matrix = None
+
+    # ファイル読み込み
+    obj = json.loads(read_text(path))
+    elements = obj["elements"]
+
+    # ノードをすべて拾う
+    index = 0
+    for e in elements:
+        if e["type"] != "node":
+            continue
+        # ノードのIDとインデックス, 座標を対応付け
+        _id = int(e["id"])
+        if _id not in node_to_index.keys():
+            node_to_index[_id] = index
+            lat = float(e["lat"])
+            lon = float(e["lon"])
+            p = np.array([lat, lon], dtype=float)
+            index_to_position[index] = p
+            index += 1
+
+    print(node_to_index)
+
+    # 隣接行列のnparrayを作成
+    l = len(node_to_index)
+    adj_matrix = np.zeros((l, l))
+
+    # 道を読み込んで隣接ノードの距離を計算
+    for e in elements:
+        if e["type"] != "way":
+            continue
+        prev_index = -1
+        prev_pos = None
+        # ノードの数だけ繰り返し
+        for n in e["nodes"]:
+            _id = int(n)
+            index = node_to_index[_id]
+            pos = index_to_position[index]
+            if prev_index > -1:
+                dist = np.linalg.norm(prev_pos - pos, ord=2)
+                adj_matrix[prev_index, index] = dist
+                adj_matrix[index, prev_index] = dist
+            prev_index = index
+            prev_pos = pos
+
+    # 首都大のノードインデックスを取得
+    tmu = np.array([35.6613086, 139.3682016])
+    min_set = min(index_to_position.items(), key=lambda x: np.linalg.norm(x[1] - tmu, ord=2))
+    university = min_set[0]
+
+    return university, index_to_position, adj_matrix
 
 
 def road_to_matrix(path):
@@ -98,8 +155,8 @@ class RoadMatrix:
 
 
 if __name__ == "__main__":
-    univ, tab, mat = road_to_matrix(PATH)
+    univ, tab, mat = osm_to_matrix(PATH)
     print(univ)
-    print("table :", tab)
+    print("table :", tab[1])
     print("matrix :", mat)
     save_pickle(RoadMatrix(univ, tab, mat), DUMP_NAME)

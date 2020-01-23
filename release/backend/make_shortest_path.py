@@ -29,7 +29,6 @@ if __name__ == "__main__":
     matrix = np.array(obj.matrix, dtype=float)
     
     _, path = shortest_path(matrix, method='D', return_predecessors=True)
-    #pickle.dump(path, open('dijkstra_model.dump', 'wb'))
     position_path_dict = dict()
 
 
