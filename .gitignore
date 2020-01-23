@@ -104,3 +104,6 @@ venv.bak/
 
 # nodejs
 node_modules/
+
+# dump
+*.dump
