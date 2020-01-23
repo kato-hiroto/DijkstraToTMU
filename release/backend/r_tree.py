@@ -3,7 +3,7 @@ import math
 import numpy as np
 import pickle
 
-from road_to_matrix import RoadMatrix
+from .road_to_matrix import RoadMatrix
 
 
 MATRIX_NAME = "./road_matrix.dump"

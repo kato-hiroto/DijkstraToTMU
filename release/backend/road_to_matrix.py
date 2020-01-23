@@ -100,6 +100,6 @@ class RoadMatrix:
 if __name__ == "__main__":
     univ, tab, mat = road_to_matrix(PATH)
     print(univ)
-    # print("table :", tab)
+    print("table :", tab)
     print("matrix :", mat)
     save_pickle(RoadMatrix(univ, tab, mat), DUMP_NAME)

@@ -1,9 +1,7 @@
 import scipy 
 import pickle
-from road_to_matrix import *
 
-
-position_path_dict = pickle.load(open('position_path_dicti.dump', 'rb'))
+position_path_dict = pickle.load(open('./backend/position_path_dict.dump', 'rb'))
 #obj = pickle.load(open('road_matrix.dump', 'rb'))
 #table = obj.table
 

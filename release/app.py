@@ -5,6 +5,7 @@ from gevent import pywsgi
 from geventwebsocket.handler import WebSocketHandler
 
 from backend import dijkstra
+from backend.r_tree import NodeInformation, RTree
 
 
 def read_pickle(path):
@@ -16,7 +17,7 @@ def read_pickle(path):
 
 PORT = 8080
 app = Flask(__name__, template_folder="./")
-rtree = read_pickle("rtree.dump")
+rtree = read_pickle("./backend/rtree.dump")
 
 
 @app.route("/")
@@ -34,7 +35,7 @@ def pipe():
             else:
                 lat, lng = map(float, msg.split(','))
                 print("receive lat:", lat, "lng:", lng)
-                start_id = rtree.return_id(lat, lon)
+                start_id = rtree.return_id(lat, lng)
                 
                 # ここに処理を書く
                 result = dijkstra.way_to_tmu(start_id)
