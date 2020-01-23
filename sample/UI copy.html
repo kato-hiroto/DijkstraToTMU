@@ -1,0 +1,147 @@
+<html>
+
+<head>
+    <title>leaflet_test</title>
+    <link rel="stylesheet" href="https://unpkg.com/leaflet@1.5.1/dist/leaflet.css"
+        integrity="sha512-xwE/Az9zrjBIphAcBb3F6JVqxf46+CDLwfLMHloNu6KEQCAWi6HcDUbeOfBIptF7tcCzusKFjFw2yuvEpDL9wQ=="
+        crossorigin="" />
+    <script src="https://unpkg.com/leaflet@1.5.1/dist/leaflet.js"
+        integrity="sha512-GffPMF3RvMeYyc1LWMHtK8EbPv0iNZ8/oTtHPx9/cc2ILxQ+u905qIwdpULaqDkyBKgOaB57QTMg7ztg8Jm2Og=="
+        crossorigin=""></script>
+    <link rel="stylesheet" href="map.css">
+    <script src="jQuery.js"></script>
+</head>
+
+<body>
+    <div id="mapid"></div>
+    
+    <script>
+        const socket = new WebSocket("ws://localhost:8080/pipe");   // ソケットの作成
+        socket.onmessage = (ev) => {    // 受信
+            drawPolylineFunction(ev.data)   // ev.dataに文字列が入っている
+        };
+
+        //初期の地図を宣言
+        var mymap = L.map('mapid').setView([35.66123, 139.366851], 16);
+        var line =  L.polyline([], { color: 'blue', weight: 5, bubblingMouseEvents: false }).addTo(mymap);
+        var start_position = L.marker([0,0]).addTo(mymap);
+        var global_e;
+
+        L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png?{foo}',
+        { foo: 'bar', attribution: 'Map data &copy; <a href="https://www.openstreetmap.org/">OpenStreetMap</a> contributors, <a href="https://creativecommons.org/licenses/by-sa/2.0/">CC-BY-SA</a>' }
+        ).addTo(mymap);
+
+        //首都大の位置のポップアップ
+        var marker = L.marker([35.66123, 139.366851]).addTo(mymap);
+
+        //首都大を青枠で表示
+        var polygon = L.polygon([
+            //右上
+            [35.663084, 139.367854],
+            //右ちょい上
+            [35.661729, 139.368122],
+            //右ちょい下
+            [35.660853, 139.368149],
+            //右下
+            [35.660081, 139.368101],
+            //左下
+            [35.660251, 139.365719],
+            //左上
+            [35.661629, 139.364807]
+            ]).addTo(mymap);
+
+        //首都大のポップアップを設定
+        marker.bindPopup("<b>首都大学東京</b><br>日野キャンパス").openPopup();
+        polygon.bindPopup("〒191-0065<br>東京都日野市旭が丘６丁目６");
+
+        function drawPolylineFunction(ev_data) {
+            start_position.remove();
+            start_position = L.marker(gloabl_e.latlng).addTo(mymap);
+            start_position.bindPopup("現在地<br>" + gloabl_e.latlng.toString()).openPopup();
+            
+            //stringをJsonに書き換える
+            var json_list = JSON.parse(ev_data);
+
+            //Jsonをリストに書き換える
+            var route = [];
+            for( var i in json_list){
+                route.push(json_list[i]);
+            }
+            //一番後ろに首都大の緯度経度を追加
+            route.push([35.66123, 139.366851]);
+
+            //赤いラインの初期化
+            line.setLatLngs([]);
+
+            //ルートを赤線で表示する
+            line = L.polyline(route,
+            {
+            "color": "#FF0000",
+            "weight": 3,
+            "opacity": 0.6
+            }).addTo(mymap);
+
+            //もろもろを表示する
+            start_position.remove();
+            start_position = L.marker(gloabl_e.latlng).addTo(mymap);
+            start_position.bindPopup("現在地<br>" + gloabl_e.latlng.toString()).openPopup();
+        }
+
+    </script>
+
+    <script>
+        var mymap = L.map('mapid').setView([35.660631, 139.3666648], 15);
+        L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png?{foo}',
+            { foo: 'bar', attribution: 'Map data &copy; <a href="https://www.openstreetmap.org/">OpenStreetMap</a> contributors, <a href="https://creativecommons.org/licenses/by-sa/2.0/">CC-BY-SA</a>' }
+        ).addTo(mymap);
+
+        var popup = L.popup();
+
+        function gotoTMU(e) {
+            //首都大までの最短経路を表示するコード
+
+
+            //get osm json data
+            $.ajax({
+                url: "osm.json",
+                type: "GET",
+                dataType: "json",
+                success: function (data) {
+                    $.each(data.elements, function (i, item) {
+                        if(item.lat>35.660431 && item.lat<35.660831){
+                            if(item.lon>139.3664648 && item.lon<139.3668648){
+                                var marker = L.marker([item.lat, item.lon]).addTo(mymap);
+                            }
+                        }
+                        
+                    })
+                    console.log("success")
+
+                },
+                error: function (data) {
+                    console.log("fail");
+                }
+            });
+        }
+        function onMapClick(e) {
+            gloabl_e = e;
+
+            socket.send(e.latlng.toString());  // 送信
+            
+            popup
+                .setLatLng(e.latlng)
+                .setContent("Now you're in " + e.latlng.toString() +
+                    '</br><button onclick="gotoTMU()">go to TMU</button>')
+                .openOn(mymap);
+        }
+
+        mymap.on('click', onMapClick);
+
+
+
+
+
+    </script>
+</body>
+
+</html>

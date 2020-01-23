@@ -8,6 +8,7 @@ from road_to_matrix import RoadMatrix
 
 MATRIX_NAME = "./road_matrix.dump"
 RTREE_NAME = "./rtree.dump"
+POINT_RANGE = 0.0005
 
 
 def save_pickle(obj, path):
@@ -40,10 +41,10 @@ class NodeInformation:
 
         # 引数の条件分岐
         if None in [node_a, node_b]:
-            min_lat = lat - 0.0004
-            min_lon = lon - 0.0004
-            max_lat = lat + 0.0004
-            max_lon = lon + 0.0004
+            min_lat = lat - POINT_RANGE
+            min_lon = lon - POINT_RANGE
+            max_lat = lat + POINT_RANGE
+            max_lon = lon + POINT_RANGE
         else:
             if lat is None:
                 lat = (node_a.min_latlon[0] + node_b.min_latlon[0]) / 2
