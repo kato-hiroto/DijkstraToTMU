@@ -4,7 +4,7 @@ import numpy as np
 import pickle
 
 
-PATH = "./leaflet/hino_road.json"
+PATH = "./hino_road.json"
 DUMP_NAME = "road_matrix.dump"
 UID_START = 0
 
@@ -42,6 +42,7 @@ def road_to_matrix(path):
         for c in f["geometry"]["coordinates"]:
 
             # ポイント間の距離を測る
+            c = [c[1], c[0]]
             cost = math.inf
             p = np.array(c)
             if prev_point is not None:
@@ -78,18 +79,28 @@ def road_to_matrix(path):
             if c < math.inf:
                 np_matrix[i, j] = c
                 np_matrix[j, i] = c
-    return point_table, np_matrix
+    
+    # inf -> 0
+    f = np.frompyfunc(lambda x: 0 if x == np.inf else x, 1, 1)
+    np_matrix = f(np_matrix)
+
+    # 学校のノード検索
+    university = uid_table[str([35.6613086, 139.3682016])]
+
+    return university, point_table, np_matrix
 
 
 class RoadMatrix:
-    def __init__(self, tab, mat):
+    def __init__(self, univ, tab, mat):
+        self.university = univ
         self.table = tab
         self.matrix = mat
 
 
 if __name__ == "__main__":
-    tab, mat = road_to_matrix(PATH)
-    print("table :", tab)
+    univ, tab, mat = road_to_matrix(PATH)
+    print(univ)
+    # print("table :", tab)
     print("matrix :", mat)
-    save_pickle(RoadMatrix(tab, mat), DUMP_NAME)
+    save_pickle(RoadMatrix(univ, tab, mat), DUMP_NAME)
 
