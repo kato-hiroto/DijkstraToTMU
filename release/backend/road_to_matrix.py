@@ -103,4 +103,3 @@ if __name__ == "__main__":
     # print("table :", tab)
     print("matrix :", mat)
     save_pickle(RoadMatrix(univ, tab, mat), DUMP_NAME)
-

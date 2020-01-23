@@ -200,6 +200,11 @@ class RTree:
         return min(cand_dists, key=lambda x: x[1])[0]
 
 
+    def return_id(self, lat, lon):
+        node = self.search(lat, lon)
+        return node.index
+
+
 if __name__ == "__main__":
     # dump = read_pickle(MATRIX_NAME)
     # rtree = RTree(dump.table, dump.matrix)
