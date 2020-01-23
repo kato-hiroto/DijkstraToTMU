@@ -4,7 +4,7 @@ import numpy as np
 import pickle
 
 
-PATH = "./leaflet/hino_road.json"
+PATH = "./hino_road.json"
 DUMP_NAME = "road_matrix.dump"
 UID_START = 0
 
@@ -25,6 +25,13 @@ def road_to_matrix(path):
     # 保存領域
     uid_table = {}
     point_table = {}
+
+    """
+    {
+        0: [35, 135],
+        1: [26, 136]
+    }
+    """
     adj_matrix = []
 
     obj = json.loads(read_text(path))
@@ -78,6 +85,11 @@ def road_to_matrix(path):
             if c < math.inf:
                 np_matrix[i, j] = c
                 np_matrix[j, i] = c
+    
+    # inf -> 0
+    f = np.frompyfunc(lambda x: 0 if x == np.inf else x, 1, 1)
+    np_matrix = f(np_matrix)
+
     return point_table, np_matrix
 
 
@@ -89,7 +101,7 @@ class RoadMatrix:
 
 if __name__ == "__main__":
     tab, mat = road_to_matrix(PATH)
-    print("table :", tab)
+    # print("table :", tab)
     print("matrix :", mat)
     save_pickle(RoadMatrix(tab, mat), DUMP_NAME)
 
