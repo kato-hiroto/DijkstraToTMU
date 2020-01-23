@@ -25,13 +25,6 @@ def road_to_matrix(path):
     # 保存領域
     uid_table = {}
     point_table = {}
-
-    """
-    {
-        0: [35, 135],
-        1: [26, 136]
-    }
-    """
     adj_matrix = []
 
     obj = json.loads(read_text(path))
@@ -49,6 +42,7 @@ def road_to_matrix(path):
         for c in f["geometry"]["coordinates"]:
 
             # ポイント間の距離を測る
+            c = [c[1], c[0]]
             cost = math.inf
             p = np.array(c)
             if prev_point is not None:
@@ -90,18 +84,23 @@ def road_to_matrix(path):
     f = np.frompyfunc(lambda x: 0 if x == np.inf else x, 1, 1)
     np_matrix = f(np_matrix)
 
-    return point_table, np_matrix
+    # 学校のノード検索
+    university = uid_table[str([35.6613086, 139.3682016])]
+
+    return university, point_table, np_matrix
 
 
 class RoadMatrix:
-    def __init__(self, tab, mat):
+    def __init__(self, univ, tab, mat):
+        self.university = univ
         self.table = tab
         self.matrix = mat
 
 
 if __name__ == "__main__":
-    tab, mat = road_to_matrix(PATH)
+    univ, tab, mat = road_to_matrix(PATH)
+    print(univ)
     # print("table :", tab)
     print("matrix :", mat)
-    save_pickle(RoadMatrix(tab, mat), DUMP_NAME)
+    save_pickle(RoadMatrix(univ, tab, mat), DUMP_NAME)
 
