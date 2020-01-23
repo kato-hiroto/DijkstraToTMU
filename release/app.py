@@ -37,7 +37,7 @@ def pipe():
                 start_id = rtree.return_id(lat, lon)
                 
                 # ここに処理を書く
-                result = dijkstra.dijkstra(lat, lng)
+                result = dijkstra.way_to_tmu(start_id)
                 result_json = json_dumps(result)
                 print(result_json)
                 ws.send(result_json)    # 送信

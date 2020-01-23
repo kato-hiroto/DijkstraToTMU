@@ -7,8 +7,7 @@ position_path_dict = pickle.load(open('position_path_dicti.dump', 'rb'))
 #obj = pickle.load(open('road_matrix.dump', 'rb'))
 #table = obj.table
 
-def way_to_tmu(lat, lng):
-    start_id = get_id_from_rtree(lat, lng)
+def way_to_tmu(start_id):
     return position_path_dict[start_id]
     # ここに処理を書く
     # 戻り値緯度経度のリスト
