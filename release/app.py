@@ -1,11 +1,23 @@
+import pickle
+
 from flask import Flask, render_template, request
 from gevent import pywsgi
 from geventwebsocket.handler import WebSocketHandler
 
 from backend import dijkstra
 
+
+def read_pickle(path):
+    dump = None
+    with open(path, "rb") as f:
+        dump = pickle.load(f)
+    return dump
+
+
 PORT = 8080
 app = Flask(__name__, template_folder="./")
+rtree = read_pickle("rtree.dump")
+
 
 @app.route("/")
 def index():
@@ -22,6 +34,7 @@ def pipe():
             else:
                 lat, lng = map(float, msg.split(','))
                 print("receive lat:", lat, "lng:", lng)
+                start_id = rtree.return_id(lat, lon)
                 
                 # ここに処理を書く
                 result = dijkstra.dijkstra(lat, lng)
