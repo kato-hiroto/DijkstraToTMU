@@ -21,4 +21,4 @@ $ cd release
 $ python app.py
 ```
 
-この状態で `http://localhost:8000` と表示されたらそのURLをブラウザで開く．
+この状態で `http://localhost:8080` と表示されたらそのURLをブラウザで開く．
