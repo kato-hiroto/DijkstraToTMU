@@ -1,5 +1,0 @@
-// https://overpass-turbo.eu/
-// 上記のURLに行ってこのコードをペーストし、地図でBBOXを指定し、実行する。
-[out:json];
-way["highway"]({{bbox}});
-foreach((._;>;);out;);
